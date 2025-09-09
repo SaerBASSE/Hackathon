@@ -6,7 +6,7 @@ from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 
 df = pd.read_csv('data/waiting_times_train.csv')
-df['date'] = pd.to_datetime(df['date'])
+df['date'] = pd.to_datetime(df['DATETIME'])
 df['year'] = df['date'].dt.year
 df['month'] = df['date'].dt.month   
 df['day'] = df['date'].dt.day
