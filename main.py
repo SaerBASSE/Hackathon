@@ -79,6 +79,10 @@ print(f"Nombre de composantes pour 85% de variance: {np.argmax(cumvar >= 0.85) +
 print(f"Nombre de composantes pour 90% de variance: {np.argmax(cumvar >= 0.90) + 1}")
 print(f"Nombre de composantes pour 95% de variance: {np.argmax(cumvar >= 0.95) + 1}")
 
+print("nom des features:")
+for i, feature in enumerate(pac.components_):
+    print(f"  Feature {i + 1}: {feature}")
+
 # Top 10 des composantes qui expliquent le plus de variance
 print(f"\nTop 10 des composantes avec le plus de variance:")
 top_components = np.argsort(pca_full.explained_variance_ratio_)[::-1][:10]
