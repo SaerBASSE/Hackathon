@@ -4,3 +4,6 @@ hackathon IMI 2025 Saer BASSE, William Barthelemy, Neil Benmouffok, Erwann Cogne
 Première idée :
 - Trouver la PCA à l'aide d'une matrice de covariance
 - Réaliser une regression linéaire sur ce paramètre
+
+Première étape : 
+- mettre toutes les données au format numérique
