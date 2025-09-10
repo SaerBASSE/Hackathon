@@ -1,14 +1,59 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from sklearn.model_selection import cross_val_score
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import xgboost as xgb
 import os
 import multiprocessing
+import optuna
+import warnings
+warnings.filterwarnings("ignore")
 
-# Optimiser pour M4 Pro
+class XGBoostOptimize:
+    def __init__(self,X,y, n_trials=100, cv_folds=5):
+        self.X = X
+        self.y = y 
+        
+        self.n_trials = n_trials
+        self.cv_folds = cv_folds
+        self.best_model = None
+        
+        
+    def objective(self, trial):
+        param = {
+            'n_estimators': trial.suggest_int('n_estimators', 100, 2000, step = 50),
+            'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3,log=True),
+            'max_depth': trial.suggest_int('max_depth', 3, 12),
+            'subsample': trial.suggest_float('subsample', 0.5, 1.0),
+            'colsample_bytree': trial.suggest_float('colsample_bytree', 0.5, 1.0),
+            'tree_method': 'hist',
+            'n_jobs': -1,
+            'random_state': 42,
+            'verbosity': 0,
+            'objective': 'reg:squarederror'
+        }
+        
+        model = xgb.XGBRegressor(**param)
+        scores = cross_val_score(
+            model, self.X, self.y, 
+            cv=self.cv_folds, 
+            scoring='neg_root_mean_squared_error',
+            n_jobs=-1
+        )
+        return -np.mean(scores)
+    
+    def fit(self, X, y):
+        study = optuna.create_study(direction='minimize')
+        study.optimize(lambda trial: self.objective(trial, X, y), n_trials=50)
+        best_params = study.best_params
+        self.model = xgb.XGBRegressor(**best_params)
+        self.model.fit(X, y)
+        
+    def predict(self, X):
+        return self.model.predict(X)
 os.environ['OMP_NUM_THREADS'] = str(multiprocessing.cpu_count())
 df1 = pd.read_csv('/Users/home/Documents/Hackathon/data/waiting_times_train.csv')
 df2 = pd.read_csv('/Users/home/Documents/Hackathon/data/weather_data.csv')
