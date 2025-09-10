@@ -84,12 +84,14 @@ df['hours'] = df['date'].dt.hour
 df['minutes'] = df['date'].dt.minute
 
 df_encoded = pd.get_dummies(df, columns=['ENTITY_DESCRIPTION_SHORT'], drop_first=True)
-Features= ['year', 'month', 'day', 'hours', 'minutes','temp','dew_point','feels_like','pressure','humidity','wind_speed','rain_1h','snow_1h','clouds_all'] + [col for col in df_encoded.columns if col.startswith('ENTITY_DESCRIPTION_SHORT_')]
+Features= ['year', 'month', 'day', 'hours', 'minutes','ADJUST_CAPACITY','CURRENT_WAIT_TIME','DOWNTIME','feels_like','rain_1h','snow_1h'] + [col for col in df_encoded.columns if col.startswith('ENTITY_DESCRIPTION_SHORT_')]
 X = df_encoded[Features]
+X['DOWNTIME'].fillna(0,inplace=True)
+X['snow_1h'].fillna(0,inplace=True)
+X['rain_1h'].fillna(0,inplace=True)
 
-X.fillna(10000000000000, inplace=True)
 scaler = StandardScaler()
-
+X_scaled = scaler.fit_transform(X)
 
 X_valid = pd.read_csv('/Users/home/Documents/Hackathon/data/waiting_times_X_test_val.csv')
 X_valid = pd.merge(X_valid, df2, on='DATETIME', how='inner')
@@ -100,11 +102,14 @@ X_valid['day'] = X_valid['date'].dt.day
 X_valid['hours'] = X_valid['date'].dt.hour
 X_valid['minutes'] = X_valid['date'].dt.minute
 X_valid_encoded = pd.get_dummies(X_valid, columns=['ENTITY_DESCRIPTION_SHORT'], drop_first=True)
-X_valid_encoded.fillna(10000000000000, inplace=True)
+
 X_valid_final = X_valid_encoded.reindex(columns=X.columns, fill_value=0)
+X_valid_final['DOWNTIME'].fillna(0,inplace=True)
+X_valid_final['snow_1h'].fillna(0,inplace=True)
+X_valid_final['rain_1h'].fillna(0,inplace=True)
+X_valid_final = scaler.transform(X_valid_final)
 
-
-model = XGBoostOptimize(X, df['WAIT_TIME_IN_2H'], n_trials=100, cv_folds=5)
+model = XGBoostOptimize(X_scaled, df['WAIT_TIME_IN_2H'], n_trials=10, cv_folds=5)
 model.optimize(timeout=3600)  # Limite de temps de 2 heures
 model.get_best_model()
 predictions = model.predict(X_valid_final)
@@ -115,5 +120,5 @@ X_valid_encoded['ENTITY_DESCRIPTION_SHORT'] = decoded_categories
 X_valid_encoded['DATETIME'] = X_valid_encoded['date'].dt.strftime('%Y-%m-%d %H:%M:%S')
 print(X_valid_encoded.columns)
 output = pd.DataFrame({'DATETIME': X_valid_encoded['DATETIME'],'ENTITY_DESCRIPTION_SHORT':X_valid_encoded['ENTITY_DESCRIPTION_SHORT'],'y_pred': predictions,'KEY':['Validation'for i in range(len(predictions))]})
-output.to_csv('/Users/home/Documents/Hackathon/data/predictions_new.csv', index=False)
+output.to_csv('/Users/home/Documents/Hackathon/data/predictions_new2.csv', index=False)
 print ("Fini")
