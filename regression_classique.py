@@ -4,7 +4,7 @@ from datetime import datetime
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
-import modele
+import modeles
 
 df1 = pd.read_csv('/Users/home/Documents/Hackathon/data/waiting_times_train.csv')
 df2 = pd.read_csv('/Users/home/Documents/Hackathon/data/weather_data.csv')

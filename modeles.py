@@ -25,7 +25,7 @@ class OptimizedEnsembleRegressor:
         """Initialise les modèles optimisés pour M4"""
         self.models = {
             'xgb': xgb.XGBRegressor(
-                n_estimators=500,
+                n_estimators=1000,
                 learning_rate=0.1,
                 max_depth=6,
                 subsample=0.8,
@@ -36,7 +36,7 @@ class OptimizedEnsembleRegressor:
             ),
             
             'lgb': lgb.LGBMRegressor(
-                n_estimators=500,
+                n_estimators=1000,
                 learning_rate=0.1,
                 num_leaves=31,
                 feature_fraction=0.9,
@@ -48,7 +48,7 @@ class OptimizedEnsembleRegressor:
             ),
             
             'catboost': CatBoostRegressor(
-                iterations=500,
+                iterations=1000,
                 learning_rate=0.1,
                 depth=6,
                 thread_count=-1,
@@ -57,7 +57,7 @@ class OptimizedEnsembleRegressor:
             ),
             
             'rf': RandomForestRegressor(
-                n_estimators=200,
+                n_estimators=600,
                 max_depth=10,
                 min_samples_split=5,
                 min_samples_leaf=2,
@@ -66,7 +66,7 @@ class OptimizedEnsembleRegressor:
             ),
             
             'gb': GradientBoostingRegressor(
-                n_estimators=200,
+                n_estimators=600,
                 learning_rate=0.1,
                 max_depth=6,
                 subsample=0.8,

@@ -4,8 +4,12 @@ from datetime import datetime
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
-import modeles
+import xgboost as xgb
+import os
+import multiprocessing
 
+# Optimiser pour M4 Pro
+os.environ['OMP_NUM_THREADS'] = str(multiprocessing.cpu_count())
 df1 = pd.read_csv('/Users/home/Documents/Hackathon/data/waiting_times_train.csv')
 df2 = pd.read_csv('/Users/home/Documents/Hackathon/data/weather_data.csv')
 df2.fillna(0,inplace=True)
@@ -38,10 +42,19 @@ X_valid_encoded.fillna(10000000000000, inplace=True)
 X_valid_final = X_valid_encoded.reindex(columns=X.columns, fill_value=0)
 
 
-ensemble_model = modeles.OptimizedEnsembleRegressor()
+model= xgb.XGBRegressor(
+                n_estimators=1000,
+                learning_rate=0.1,
+                max_depth=6,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                tree_method='hist',
+                n_jobs=-1,
+                random_state=42
+            )
 Y = df['WAIT_TIME_IN_2H']
-ensemble_model.fit(X, Y)
-predictions = ensemble_model.predict(X_valid_final)
+model.fit(X, Y)
+predictions = model.predict(X_valid_final)
 
 encoded_columns = [col for col in X_valid_encoded.columns if col.startswith('ENTITY_DESCRIPTION_SHORT_')]
 decoded_categories = X_valid_encoded[encoded_columns].idxmax(axis=1).apply(lambda x: x.replace('ENTITY_DESCRIPTION_SHORT_', ''))
@@ -49,5 +62,5 @@ X_valid_encoded['ENTITY_DESCRIPTION_SHORT'] = decoded_categories
 X_valid_encoded['DATETIME'] = X_valid_encoded['date'].dt.strftime('%Y-%m-%d %H:%M:%S')
 print(X_valid_encoded.columns)
 output = pd.DataFrame({'DATETIME': X_valid_encoded['DATETIME'],'ENTITY_DESCRIPTION_SHORT':X_valid_encoded['ENTITY_DESCRIPTION_SHORT'],'y_pred': predictions,'KEY':['Validation'for i in range(len(predictions))]})
-output.to_csv('/Users/home/Documents/Hackathon/data/predictions.csv', index=False)
+output.to_csv('/Users/home/Documents/Hackathon/data/predictions_new.csv', index=False)
 print ("Fini")
