@@ -31,15 +31,18 @@ pca_full.fit(X_scaled)
 
 
 # PCR
-from sklearn.linear_model import PolynomialFeatures, LinearRegression
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import Pipeline
 Y = df['WAIT_TIME_IN_2H']
 pca= PCA(n_components=6)
 scaler = StandardScaler()
 reg = LinearRegression()
 model= Pipeline([('scaler', scaler), ('pca', pca), ('reg', reg)])
+poly_model = Pipeline([('scaler', scaler), ('poly', PolynomialFeatures(degree=2)),('pca', PCA(n_components=11)), ('reg', reg)])
 model.fit(X,Y)
-print(f"Score PCR: {model.score(X,Y)}")
+poly_model.fit(X,Y)
+
 
 # predictions
 X_valid = pd.read_csv('/Users/home/Documents/Hackathon/data/waiting_times_X_test_val.csv')
@@ -54,12 +57,13 @@ X_valid_encoded = pd.get_dummies(X_valid, columns=['ENTITY_DESCRIPTION_SHORT'], 
 X_valid_encoded.fillna(10000000000000, inplace=True)
 X_valid_final = X_valid_encoded.reindex(columns=X.columns, fill_value=0)
 predictions = model.predict(X_valid_final)
-print(len(predictions))
-print(len(X_valid_encoded))
+predictions_poly = poly_model.predict(X_valid_final)
+
 encoded_columns = [col for col in X_valid_encoded.columns if col.startswith('ENTITY_DESCRIPTION_SHORT_')]
 decoded_categories = X_valid_encoded[encoded_columns].idxmax(axis=1).apply(lambda x: x.replace('ENTITY_DESCRIPTION_SHORT_', ''))
 X_valid_encoded['ENTITY_DESCRIPTION_SHORT'] = decoded_categories
 X_valid_encoded['DATETIME'] = X_valid_encoded['date'].dt.strftime('%Y-%m-%d %H:%M:%S')
 print(X_valid_encoded.columns)
-output = pd.DataFrame({'DATETIME': X_valid_encoded['DATETIME'],'ENTITY_DESCRIPTION_SHORT':X_valid_encoded['ENTITY_DESCRIPTION_SHORT'],'y_pred': predictions,'KEY':['Validation'for i in range(len(predictions))]})
-output.to_csv('/Users/home/Documents/Hackathon/data/predictions.csv', index=False)
+output = pd.DataFrame({'DATETIME': X_valid_encoded['DATETIME'],'ENTITY_DESCRIPTION_SHORT':X_valid_encoded['ENTITY_DESCRIPTION_SHORT'],'y_pred': predictions_poly,'KEY':['Validation'for i in range(len(predictions))]})
+output.to_csv('/Users/home/Documents/Hackathon/data/predictions_poly.csv', index=False)
+print ("Fini")
