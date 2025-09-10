@@ -22,9 +22,30 @@ Features= ['year', 'month', 'day', 'hours', 'minutes','temp','dew_point','feels_
 X = df_encoded[Features]
 
 X.fillna(10000000000000, inplace=True)
+
 scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+pca_full = PCA(n_components=16)
+pca_full.fit(X_scaled)
 
 
+
+# PCR
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.pipeline import Pipeline
+Y = df['WAIT_TIME_IN_2H']
+pca= PCA(n_components=6)
+scaler = StandardScaler()
+reg = LinearRegression()
+model= Pipeline([('scaler', scaler), ('pca', pca), ('reg', reg)])
+poly_model = Pipeline([('scaler', scaler), ('poly', PolynomialFeatures(degree=2)),('pca', PCA(n_components=11)), ('reg', reg)])
+model.fit(X,Y)
+poly_model.fit(X,Y)
+
+
+# predictions
 X_valid = pd.read_csv('/Users/home/Documents/Hackathon/data/waiting_times_X_test_val.csv')
 X_valid = pd.merge(X_valid, df2, on='DATETIME', how='inner')
 X_valid['date'] = pd.to_datetime(X_valid['DATETIME'],format='%Y-%m-%d %H:%M:%S', errors='coerce')
@@ -36,18 +57,14 @@ X_valid['minutes'] = X_valid['date'].dt.minute
 X_valid_encoded = pd.get_dummies(X_valid, columns=['ENTITY_DESCRIPTION_SHORT'], drop_first=True)
 X_valid_encoded.fillna(10000000000000, inplace=True)
 X_valid_final = X_valid_encoded.reindex(columns=X.columns, fill_value=0)
-
-
-ensemble_model = modele.OptimizedEnsembleRegressor()
-Y = df['WAIT_TIME_IN_2H']
-ensemble_model.fit(X, Y)
-predictions = ensemble_model.predict(X_valid_final)
+predictions = model.predict(X_valid_final)
+predictions_poly = poly_model.predict(X_valid_final)
 
 encoded_columns = [col for col in X_valid_encoded.columns if col.startswith('ENTITY_DESCRIPTION_SHORT_')]
 decoded_categories = X_valid_encoded[encoded_columns].idxmax(axis=1).apply(lambda x: x.replace('ENTITY_DESCRIPTION_SHORT_', ''))
 X_valid_encoded['ENTITY_DESCRIPTION_SHORT'] = decoded_categories
 X_valid_encoded['DATETIME'] = X_valid_encoded['date'].dt.strftime('%Y-%m-%d %H:%M:%S')
 print(X_valid_encoded.columns)
-output = pd.DataFrame({'DATETIME': X_valid_encoded['DATETIME'],'ENTITY_DESCRIPTION_SHORT':X_valid_encoded['ENTITY_DESCRIPTION_SHORT'],'y_pred': predictions,'KEY':['Validation'for i in range(len(predictions))]})
-output.to_csv('/Users/home/Documents/Hackathon/data/predictions.csv', index=False)
+output = pd.DataFrame({'DATETIME': X_valid_encoded['DATETIME'],'ENTITY_DESCRIPTION_SHORT':X_valid_encoded['ENTITY_DESCRIPTION_SHORT'],'y_pred': predictions_poly,'KEY':['Validation'for i in range(len(predictions))]})
+output.to_csv('/Users/home/Documents/Hackathon/data/predictions_poly.csv', index=False)
 print ("Fini")
