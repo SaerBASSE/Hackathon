@@ -259,7 +259,7 @@ def load_and_preprocess_data(train_path: str, weather_path: str,
     # Définition des features
     time_features = ['year', 'month', 'day', 'hour', 'minute', 'day_of_week', 'day_of_year']
     numerical_features = ['ADJUST_CAPACITY', 'CURRENT_WAIT_TIME', 'DOWNTIME', 
-                         'feels_like', 'rain_1h', 'snow_1h']
+                         'feels_like', 'rain_1h', 'snow_1h','humidity','pressure','temp','wind_speed','clouds_all']
     categorical_features = [col for col in df_train_encoded.columns 
                           if col.startswith('ENTITY_DESCRIPTION_SHORT_')]
     
@@ -303,7 +303,7 @@ def load_and_preprocess_data(train_path: str, weather_path: str,
     return X_train_scaled, y_train, X_test_scaled, metadata_test, scaler
 
 
-def main():
+def main(train =True):
     """Fonction principale d'exécution."""
     
     # Configuration des chemins (à adapter selon votre environnement)
@@ -319,24 +319,27 @@ def main():
         X_train, y_train, X_test, metadata_test, scaler = load_and_preprocess_data(
             str(TRAIN_PATH), str(WEATHER_PATH), str(TEST_PATH)
         )
+        if train == True:
+            # Optimisation du modèle
+            optimizer = XGBoostOptimizer(
+                X_train, y_train, 
+                n_trials=50,  # Réduit pour les tests
+                cv_folds=5
+         )
         
-        # Optimisation du modèle
-        optimizer = XGBoostOptimizer(
-            X_train, y_train, 
-            n_trials=50,  # Réduit pour les tests
-            cv_folds=5
-        )
+            # Optimisation des hyperparamètres
+            best_params = optimizer.optimize(timeout=3600)
+            logger.info(f"Meilleurs paramètres: {best_params}")
         
-        # Optimisation des hyperparamètres
-        best_params = optimizer.optimize(timeout=3600)
-        logger.info(f"Meilleurs paramètres: {best_params}")
+            # Entraînement du modèle final
+            optimizer.train_best_model()
         
-        # Entraînement du modèle final
-        optimizer.train_best_model()
-        
-        # Sauvegarde du modèle
-        optimizer.save_model(str(MODEL_PATH))
-        
+            # Sauvegarde du modèle
+            optimizer.save_model(str(MODEL_PATH))
+        else:
+            # Chargement du modèle existant
+            optimizer = XGBoostOptimizer(X_train, y_train)
+            optimizer.load_model(str(MODEL_PATH))
         # Prédictions
         predictions = optimizer.predict(X_test)
         
@@ -362,4 +365,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(train=False)
