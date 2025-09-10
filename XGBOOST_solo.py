@@ -20,6 +20,7 @@ class XGBoostOptimize:
         self.n_trials = n_trials
         self.cv_folds = cv_folds
         self.best_model = None
+        self.study = None
         
         
     def objective(self, trial):
@@ -44,16 +45,32 @@ class XGBoostOptimize:
             n_jobs=-1
         )
         return -np.mean(scores)
-    
-    def fit(self, X, y):
-        study = optuna.create_study(direction='minimize')
-        study.optimize(lambda trial: self.objective(trial, X, y), n_trials=50)
-        best_params = study.best_params
-        self.model = xgb.XGBRegressor(**best_params)
-        self.model.fit(X, y)
+    def optimize(self,timeout = 3600):
+        print("debut de l'optimisation")
+        self.study = optuna.create_study(direction = 'minimize',sampler=optuna.samplers.TPESampler(seed=42),
+            pruner=optuna.pruners.MedianPruner(n_startup_trials=20))
+        def callback(study, trial):
+            if trial.number % 20 == 0:
+                print(f"Trial {trial.number}: Best RMSE so far: {study.best_value:.6f}")
+        self.study.optimize(self.objective, n_trials=self.n_trials, timeout=timeout, callbacks=[callback], show_progress_bar=True)
+        print("Optimisation terminée")
+        return self.study.best_params
+    def get_best_model(self):
+        if self.study is None:
+            raise ValueError("You need to run the optimize method before getting the best model.")
+        best_params = self.study.best_params
+        best_params.update({
+            'tree_method': 'hist',
+            'n_jobs': -1,
+            'random_state': 42,
+            'verbosity': 0
+        })
+        self.best_model = xgb.XGBRegressor(**best_params)
+        self.best_model.fit(self.X, self.y)
+        
         
     def predict(self, X):
-        return self.model.predict(X)
+        return self.best_model.predict(X)
 os.environ['OMP_NUM_THREADS'] = str(multiprocessing.cpu_count())
 df1 = pd.read_csv('/Users/home/Documents/Hackathon/data/waiting_times_train.csv')
 df2 = pd.read_csv('/Users/home/Documents/Hackathon/data/weather_data.csv')
@@ -87,18 +104,9 @@ X_valid_encoded.fillna(10000000000000, inplace=True)
 X_valid_final = X_valid_encoded.reindex(columns=X.columns, fill_value=0)
 
 
-model= xgb.XGBRegressor(
-                n_estimators=1000,
-                learning_rate=0.1,
-                max_depth=6,
-                subsample=0.8,
-                colsample_bytree=0.8,
-                tree_method='hist',
-                n_jobs=-1,
-                random_state=42
-            )
-Y = df['WAIT_TIME_IN_2H']
-model.fit(X, Y)
+model = XGBoostOptimize(X, df['WAIT_TIME_IN_2H'], n_trials=100, cv_folds=5)
+model.optimize(timeout=3600)  # Limite de temps de 2 heures
+model.get_best_model()
 predictions = model.predict(X_valid_final)
 
 encoded_columns = [col for col in X_valid_encoded.columns if col.startswith('ENTITY_DESCRIPTION_SHORT_')]
